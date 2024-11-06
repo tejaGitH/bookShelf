@@ -1,0 +1,519 @@
+   
+       bookController.js
+       const api = require("../middleware/api");
+
+const getBestSellers = async(req,res)=>{
+    const list= req.params.list;
+    try{
+        const data = await api.getBestSellers(list);
+        res.json(data);
+    }catch(error){
+        res.status(500).json({message:'error fetching best sellers',error:error.message});
+    }
+}
+
+const getBookDetails = async(req,res)=>{
+    const isbn = req.params.isbn;
+    console.log(isbn);
+    try{
+        const data = await api.getBookDetails(isbn);
+        res.json(data);
+    }catch(error){
+        res.status(500).json({message:'Error fetching Book details'});
+    }
+}
+
+const searchBooks =async(req,res)=>{
+    const query = req.params.query;
+    //console.log(query);
+    try{
+        const data = await api.searchBooks(query);
+        //console.log(data);
+        res.json(data);
+    }catch(error){
+        res.status(500).json({message:'Error searching books'});
+    }
+}
+
+module.exports={
+    getBestSellers,
+    getBookDetails,
+    searchBooks,
+};
+userController.js
+const User = require("../models/User");
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
+const mongoose = require("mongoose");
+
+const jwtExpireTime= '1hr';
+
+const signUp = async (req,res)=>{
+    try{
+        const {username, email, password} = req.body;
+        const existingUser =await User.findOne({email});
+        if(existingUser){
+            res.status(400).json({message:"user exists"});
+        }
+        const hashedPwd= await bcrypt.hash(password,10);
+        const newUser = new User({username, email, password:hashedPwd});
+        await newUser.save().then(()=>{
+            res.status(201).json({message:"user Created"});
+        });
+    }catch(error){
+        res.status(400).json({message: error.message});
+    }
+}
+
+
+const login = async(req,res)=>{
+    try{
+        const {email,password}= req.body;
+        console.log("hi");
+        // Input validatin
+    if (!email || !password) {
+        return res.status(400).json({ message: 'Email and password required' });
+      }
+        const user = await User.findOne({email});
+        if(!user){
+            return res.status(401).json({message:'Invalid crededentials'});
+        }
+        const isValidPassword = await bcrypt.compare(password,user.password);
+        if(!isValidPassword){
+            return res.status(401).json({message: 'Invalid Crededentials'});
+        }
+        const payload ={
+            id:user._id,
+            name: user.username,
+            role: user.role
+        }
+        const token = jwt.sign(payload, process.env.SECRET_KEY,{expiresIn:'24h'});
+        //set cookies with jwt
+       // res.cookies('token', token,{httpOnly: true});//set cookies for client side access
+        res.status(200).json({token,user: payload});
+    }catch(error){
+        if (error instanceof mongoose.Error) {
+            res.status(500).json({ message: 'Database error' });}
+            else
+        res.status(400).json({message:error.message});
+    }
+}
+
+module.exports ={ signUp,login};
+friendController.js
+const Friendship = require("../models/Friendship");
+const User = require("../models/User");
+const Review = require("../models/Review");
+
+//send friend request
+exports.sendFriendRequest = async(req,res)=>{
+    try{
+        const {friendId} = req.body;
+        //const friendId="teja2";
+        const userId = req.userId;
+        //const userId = "teja";
+        console.log(req.body);
+        console.log("error............",userId);
+         //input validation
+         if(!friendId){
+            return res.status(400).json({message:"Friend Id required"});
+        }
+        const existingFriendShip = await Friendship.findOne({user:userId, friend:friendId});
+        if(existingFriendShip){
+            return res.status(400).json(({message:"Friendship already exists"}));
+        }
+        const newFriendship = new Friendship({user: userId, friend: friendId, status:'pending'});
+        await newFriendship.save();
+
+        return res.status(201).json({message:"friend request sent"});
+    }catch(error){
+        console.log("error is ...........",req.body._id,error);
+        return res.status(500).json({message:"error sending friend request"});
+    }
+}
+
+//retrieve users friendlist
+exports.getFriends=async(req,res)=>{
+    try{
+        const userId = req.userId;
+        const friends = await Friendship.find({user:userId,status:'accepted'}).populate('friend');
+        return res.status(200).json(friends);
+    }catch(error){
+        return res.status(500).json({message:'error retreiving friends'});
+    }
+}
+
+//update friendship status
+exports.updateFriendshipStatus = async(req,res)=>{
+    try{
+        const {friendshipId, status} =req.body;
+        //inpit validation
+        if(!friendshipId || !status){
+            return res.status(400).json({message:"friendship Id and status are required"});
+        }
+        const friendship = await  Friendship.findById(friendshipId);
+        if(!friendship){
+            return res.status(404).json({message:"Friendship not found"});
+        }
+        friendship.status = status;
+        await friendship.save();
+        return res.status(200).json({message:"friendship status updated"});
+    }catch(error){
+        return res.status(500).json({message:'error updating friendship status'});
+    }
+}
+
+//Remove friend
+exports.removeFriend = async(req,res)=>{
+    try{
+        const {friendshipId} = req.params;
+        await Friendship.findByIdAndDelete(friendshipId);
+        return res.status(200).json({message:"friend removed"});
+    }catch{
+        return res.status(500).json({message:"error removing friend"});
+    }
+}
+
+//get friend updates
+exports.getFriendUpdates= async(req,res)=>{
+    try{
+        const userId = req.userId;
+        const friends = await Friendship.find({user:userId, status: 'accepted'}).populate('friend');
+        const friendId = friends.map(friend=>friend.friend._id);
+        const reviews = await Review.find({user:{$in:friendId}}).populate('book').populate('user');
+        return res.status(200).json(reviews);
+    }catch(error){
+        return res.status(500).json({message:"error retrieving friend updates"});
+    }
+}
+
+//get dashboard data
+
+exports.getDashboard= async(req,res)=>{
+    try{
+        const userId=req.userId;
+        const friendUpdates= await this.getFriendUpdates(req,res);
+        return res.status(200).json(friendUpdates);
+    }catch(error){
+        return res.status(500).json({message:"error retrieving dashboard data"});
+    }
+}
+friendRoutes.js
+const express = require('express');
+const router = express.Router();
+const friendshipController = require("../controllers/friendshipController");
+
+//send friend request
+router.post('/friend-requests',friendshipController.sendFriendRequest);
+//retrieve user's friendlist
+router.get('/friends',friendshipController.getFriends);
+//update friendship status
+router.patch('/friendships',friendshipController.updateFriendshipStatus);
+//remoove friend
+router.delete('/friends/:id',friendshipController.removeFriend);
+//get friend updates
+router.get('/friend-updates',friendshipController.getFriendUpdates);
+//get dashboard data
+router.get('/dashboard',friendshipController.getDashboard);
+
+module.exports = router;
+bookRoutes.js
+const express = require("express");
+const router = express.Router();
+const bookController =require("../controllers/bookController");
+
+router.get('/',(req,res)=>{
+    res.json({message: 'welcome to books api'});
+})
+//hardcover-fiction
+
+router.get('/best-sellers/:list',bookController.getBestSellers);
+router.get('/book-details/:isbn',bookController.getBookDetails);
+router.get('/search/:query', bookController.searchBooks);
+
+module.exports = router;
+userRoutes.js
+
+const express = require("express");
+const router = express.Router();
+const userController = require("../controllers/UserController");
+
+router.post('/signup',userController.signUp);
+router.post('/login',userController.login);
+
+module.exports =router;
+api.js
+const axios = require("axios");
+
+const NYT_API_KEY = process.env.NYT_API_KEY;
+
+
+const api ={
+getBestSellers:async (list)=>{
+    //const url =`https://api.nytimes.com/svc/books/v3/lists/current/hardcover-fiction.json?api-key=${NYT_API_KEY}`
+    //const url =`https://api.nytimes.com/svc/books/v3/lists/best-sellers.json?list=${list}`;
+    const url =`https://api.nytimes.com/svc/books/v3/lists/current/hardcover-fiction.json?api-key=${NYT_API_KEY}`
+    // const headers ={
+    //     'Authorization': `Bearer ${NYT_API_KEY}`,
+    // }
+    const response = await axios.get(url);
+    return response.data;
+},
+getBookDetails: async(isbn)=>{
+    console.log(isbn);
+    const url= `https://api.nytimes.com/svc/books/v3/reviews.json?isbn=${isbn}&api-key=${NYT_API_KEY}`
+    //const url = `https://api.nytimes.com/svc/books/v3/reviews.json?isbn=${isbn}&api-key=${NYT_API_KEY}`
+    //const url = `https://api.nytimes.com/svc/books/v3/reviews.json?isbn=reviews.json?isbn=9781524763138&api-key=${NYT_API_KEY}`
+    //const url =`https://api.nytimes.com/svc/books/v3/reviews.json?isbn=${isbn}`;
+    // const headers = {
+    //     'Authorization' : `Bearer ${NYT_API_KEY}`,
+    // }
+    const response = await axios.get(url);
+    return response.data;
+},
+searchBooks: async(query)=>{
+    const url = `https://api.nytimes.com/svc/search/v2/articlesearch.json?q=${query}&api-key=${NYT_API_KEY}`
+    //const url =`https://api.nytimes.com/svc/search/v2/articlesearch.json`;
+    const response = await axios.get(url);
+//    // try {
+//         const response = await axios.get(url); // Await here
+//         console.log("Response from NYT API:", response.data); // Log full response data
+//         return response.data; // Return data correctly
+//     // } catch (error) {
+//     //     console.error("Error fetching articles:", error); // Log error details
+//     //     throw error; // Rethrow to handle it in the calling function
+//     // }
+    return response.data;
+}
+
+}
+
+
+module.exports = api;
+server.js
+require("dotenv").config();
+//console.log(process.env);
+const express = require("express");
+const mongoose = require("mongoose");
+const cors= require("cors");
+const bodyParser= require('body-parser');
+const cookieParser = require('cookie-parser');
+
+//const verifyToken = require("./middleware/verifyToken");
+const verifyToken = require("./middleware/auth");
+const userRoutes = require("./routes/userRoutes");
+const bookRoutes = require('./routes/bookRoutes');
+const friendshipRoutes = require("./routes/friendshipRoutes");
+
+
+
+
+const app = express();
+const PORT = 3000;
+const dbURI= process.env.MONGO_URI;
+
+
+mongoose.connect(dbURI).then(()=>{
+    console.log("connected to db")
+},(err)=>{
+    console.log("something Occured error"+err);
+})
+
+app.use(express.json());
+// app.use(cors({
+//     origin:'http://localhost:3003',
+//     credentials: true
+// }));
+app.use(cors)
+app.use(bodyParser.json);
+app.use(cookieParser);
+app.use('/user', verifyToken);
+//public routes
+app.use('/users',userRoutes);
+//protected routes
+app.use('/api/books',bookRoutes);
+app.use('/api',verifyToken);
+app.use('/api', verifyToken,friendshipRoutes);
+
+app.listen(PORT,(req,res)=>{
+    console.log(`server on ${PORT}`)
+});
+/models/Book.js
+const mongoose = require("mongoose");
+
+const bookSchema = new mongoose.Schema({
+    title:{
+        type : String,
+        required: true,
+    },
+    author: {
+        type : String,
+        required: true,
+    },
+    rating: {
+        type : number,
+        required: true,
+        minimum : 1,
+        maximum : 5,
+    },
+});
+
+module.exports = mongoose.model('Book',bookSchema); //??\
+
+
+
+/models/User.js
+const mongoose = require("mongoose");
+
+const userSchema = new mongoose.Schema({
+    username: {
+        type: String,
+        required: true,
+        unique: true,
+    },
+    email: {
+        type: String,
+        required: true,
+        unique: true
+    },
+    password: {
+        type: String,
+        required: true
+    },
+    role: {
+        type: String,
+        enum: ['user','admin'],
+        default: 'user'
+    },
+    friendships:[{
+        type : mongoose.Schema.Types.ObjectId,
+        ref: 'Friendship'
+    }]
+});
+
+module.exports = mongoose.model('User',userSchema);
+
+upon hitting http://localhost:3000/api/users/login postman isloading but no response gettingcheck th code once please
+
+
+----------------------------------------------------------------------
+
+
+
+https://www.perplexity.ai/search/project-title-bookshelf-projec-xxRbcfB9RRqe4Y82aSZRxw#16
+
+
+The flow of your Bookshelf project can be broken down into several key components and interactions, from user authentication to book management and social features. Below is a detailed explanation of the flow based on the provided information.
+
+## Flow of the Bookshelf Project
+
+### 1. **User Authentication**
+
+#### Sign-Up Process
+- **User Input**: Users provide their username, email, and password through a sign-up form.
+- **Backend Handling**:
+  - The `signUp` function in `userController.js` receives the input.
+  - It checks if the user already exists in the database using `User.findOne({ email })`.
+  - If the user does not exist, it hashes the password using `bcrypt` and creates a new user record in the database.
+- **Response**: A success message is sent back to the user upon successful registration.
+
+#### Login Process
+- **User Input**: Users enter their email and password on a login form.
+- **Backend Handling**:
+  - The `login` function checks if the provided email exists.
+  - It then compares the provided password with the hashed password stored in the database.
+  - If valid, it generates a JWT token containing user details (id, name, role) using `jwt.sign()`.
+- **Response**: The token is returned to the user for authentication in subsequent requests.
+
+### 2. **Token Verification**
+
+- **Middleware**: The `verifyToken` middleware checks for a valid JWT token in the Authorization header of incoming requests.
+- **Flow**:
+  - If the token is missing or invalid, a corresponding error message is returned.
+  - If valid, it extracts user information from the token and attaches it to the request object (`req.userId`).
+- This middleware is applied to routes that require authentication (excluding login and signup).
+
+### 3. **Book Management**
+
+#### Searching for Books
+- **User Action**: Users can search for books using a search bar on their dashboard.
+- **Backend Handling**:
+  - The `searchBooks` function in `bookController.js` handles incoming search queries.
+  - It calls an external API (e.g., NY Times API) to fetch relevant book data based on the user's query.
+- **Response**: The search results are returned to the frontend for display.
+
+#### Adding Books to My Bookshelf
+- **User Action**: After searching, users can add books to their bookshelf.
+- **Backend Handling**:
+  - When a book is added, its details (title, author, etc.) are saved in the user's bookshelf collection in MongoDB.
+  
+#### Viewing Book Details
+- **User Action**: Users can click on a book to view more details.
+- **Backend Handling**:
+  - The `getBookDetails` function retrieves detailed information about a specific book using its ISBN from an external API.
+- **Response**: The detailed view is returned to be displayed on the frontend.
+
+### 4. **Dashboard Features**
+
+#### Currently Reading Section
+- Users can mark books as "currently reading" and update their reading progress (percentage).
+- When they finish reading, they can mark the book as completed, which updates their dashboard view.
+
+### 5. **Social Features**
+
+#### Friend Management
+- Users can send friend requests to other users within the application.
+- The `sendFriendRequest` function handles this by checking if a friendship already exists before creating a new one.
+
+#### Social Cards
+- As users post updates or reviews about books, these updates are displayed on their friends' dashboards if they are connected as friends.
+- This encourages interaction and engagement among users.
+
+### Summary of Interactions
+
+1. User signs up or logs in → Receives JWT token → Token is stored client-side (e.g., local storage).
+2. User searches for books → Backend fetches results from external API → Displays results on UI.
+3. User adds books to their bookshelf → Data is saved in MongoDB → Updates reflected on dashboard.
+4. User manages friendships → Sends/receives friend requests → Updates visible on friends' dashboards via social cards.
+
+### Conclusion
+
+This flow outlines how users interact with your Bookshelf application, from authentication through various features like searching for books and managing social interactions. Each component is designed to work seamlessly with others, creating an engaging experience for book lovers. If you have specific areas you want to explore further or need clarification on any part of this flow, feel free to ask!
+
+Citations:
+[1] https://ppl-ai-file-upload.s3.amazonaws.com/web/direct-files/36060615/e4ba161a-40e0-4582-863f-af34aeb9b030/paste.txt
+[2] https://ppl-ai-file-upload.s3.amazonaws.com/web/direct-files/36060615/5b2f46ce-dd23-4453-8afa-f81a1bb35dee/paste-2.txt
+[3] https://ppl-ai-file-upload.s3.amazonaws.com/web/direct-files/36060615/18898b57-ac1c-42a8-8d0c-d29b9ac7b0eb/paste-3.txt
+
+
+
+
+
+
+Project Title: Bookshelf
+Project Brief
+Bookshelf is a mini social network dedicated to book lovers and enables a place for readers to curate their favourite book titles, add ratings, reviews, and comments on reviews by friends. You may refer to www.goodreads.com for visual reference on the overall scope of this project. A feature wish list is presented below.
+
+Feature Set
+The web-based application should provide the following feature set:
+
+
+User Accounts: Allow visitors to sign up and login using their e-mail IDs and password for simplicity. Adding social logins would be an added plus. 
+
+
+My Bookshelf: This section should allow users to search and add books using a third-party API such as Google Books or NY Times Books API. Once added, users should see a table with the thumbnail cover image, title, author, average rating (if already in the database and rated by other users), a rating meter to allow users to rate the title and the ability to add a text review (with edit/removal capabilities). 
+
+
+Dashboard: When a user logs in, they're taken to the dashboard which should feature the following elements:
+Currently Reading: From the bookshelf, the user should be able to click a button to mark a book as 'currently reading'. This should be displayed on the dashboard along with buttons to update progress which should capture a percentage value and a comment. Also provide, within this section a button called "I've finished" which should mark the progress as 100% and remove the book from the 'currently reading' section on the dashboard and the removal of this tag in the My Bookshelf. 
+
+
+Ref: Goodreads 1	
+
+
+Social Cards: As users post updates/reviews/ratings, it should get published publicly and visible on the user's dashboard if the post author is a friend (friends list). An example is shown below, and leeway can be taken in utilising this layout for other things. Social cards should be used to convey reviews and ratings (whenever a user updates) to keep the app simple. A user should only see these for members of their friends list.
+
+  
+  
+  
+  in this project we have done apis, 
