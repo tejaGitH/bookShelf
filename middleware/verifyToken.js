@@ -16,7 +16,7 @@ const verifyToken=(req,res,next)=>{
         return res.status(403).json({message:"Access Denied, No token Provided"});
     }
     // const bearerToken= token.split(' ')[1];
-    jwt.verify(token, 'teja',(err, decoded)=>{
+    jwt.verify(token, process.env.SECRET_KEY,(err, decoded)=>{
         console.log(token);
         console.log(JSON.stringify(decoded)) ;
                //console.log(decoded);

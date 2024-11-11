@@ -5,6 +5,7 @@ const cors= require("cors");
 const bodyParser= require('body-parser');
 const cookieParser = require('cookie-parser');
 const passport = require("passport");
+const helmet= require("helmet");
 // const expressJwt = require('jsonwebtoken');
 
 //const protectedRoute = expressJwt({ secret: 'your_jwt_secret', algorithms: ['HS256'] });
@@ -12,6 +13,8 @@ const passport = require("passport");
 // app.get('/protected', protectedRoute, (req, res) => {
 //     res.send('This is a protected route');
 // });
+
+
 
 const verifyToken = require("./middleware/verifyToken");
 //const verifyToken = require("./middleware/auth");
@@ -25,6 +28,15 @@ const app = express();
 const PORT = 3000;
 const dbURI= process.env.MONGO_URI;
 
+// Set Content Security Policy
+app.use(helmet.contentSecurityPolicy({
+    directives: {
+        defaultSrc: ["'self'"], // Only allow resources from the same origin
+        scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"], // Adjust as necessary
+        // Add other directives as needed
+    },
+}));
+
 
 mongoose.connect(dbURI).then(()=>{
     console.log("connected to db")
@@ -33,11 +45,11 @@ mongoose.connect(dbURI).then(()=>{
 })
 
 app.use(express.json());
-// app.use(cors({
-//     origin:'http://localhost:3001',
-//     credentials: true
-// }));
-app.use(cors());
+app.use(cors({
+    origin:'http://localhost:3002',
+    credentials: true,
+}));
+//app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({extended: false}));
 app.use(cookieParser());

@@ -9,7 +9,7 @@ exports.signUp =  async(req,res)=>{
     
     const {username, email, password, role} = req.body;
     //const hashedPassword = bcrypt.hash(password,await bcrypt.genSalt(10));
-    console.log(req.body.name);
+    console.log(req.body);
     try{
       const existingUser = await User.findOne({email});
       if(existingUser){
@@ -104,12 +104,14 @@ exports.signUp =  async(req,res)=>{
     };
     console.log(process.env.SECRET_KEY);
 
-    const token = jwt.sign(payload, 'teja', { expiresIn: jwtExpireTime });
-    
+    const token = jwt.sign(payload, process.env.SECRET_KEY, { expiresIn: jwtExpireTime });
+    // Set cookie with JWT token (httpOnly for security)
+    res.cookie('token', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', maxAge: jwtExpireTime * 1000 }); // maxAge in milliseconds
     console.log('Login successful', payload);
+    console.log(token);
     
     // Return the token and user info
-    return res.json({ success: true, token: `Bearer ${token}`, user: payload });
+    return res.json({ success: true, user: {...payload,token} });
 } catch (error) {
     console.error("Error during login:", error);
     return res.status(500).json({ message: "Error logging in", error });
