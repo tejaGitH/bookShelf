@@ -1,3 +1,4 @@
+require('dotenv').config();
 const User = require("../models/User");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
@@ -75,6 +76,7 @@ exports.signUp =  async(req,res)=>{
 
  exports.login = async(req, res) => {
    console.log('welcome to loginUser');
+   const jwtExpireTime = 3600;
   //  const email = req.body.email;
   //  const password = req.body.password;
   const {email, password} = req.body;

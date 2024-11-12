@@ -44,11 +44,21 @@ mongoose.connect(dbURI).then(()=>{
     console.log("something Occured error"+err);
 })
 
-app.use(express.json());
-app.use(cors({
-    origin:'http://localhost:3002',
-    credentials: true,
-}));
+// CORS configuration
+const corsOptions = {
+    origin: 'http://localhost:3002',  // Your frontend's URL
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],  // Allowed HTTP methods
+    //allowedHeaders: ['Content-Type', 'Authorization'], // Allowed headers (including token headers)
+    credentials: true,  // Allow credentials (cookies, authorization headers, etc.)
+};
+
+app.use(cors(corsOptions)); 
+
+// app.use(express.json());
+// app.use(cors({
+//     origin:'http://localhost:3002',
+//     credentials: true
+// }));
 //app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({extended: false}));

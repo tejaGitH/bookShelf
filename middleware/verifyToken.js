@@ -6,6 +6,8 @@ const verifyToken=(req,res,next)=>{
     // }
     const authHeader = req.headers['authorization'];
     console.log("authHeader",authHeader);
+    console.log("all header",req.headers);
+    
     if (!authHeader) {
       return res.status(403).json({ message: "Access Denied, No token Provided" });
     }
