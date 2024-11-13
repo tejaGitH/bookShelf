@@ -63,23 +63,27 @@ exports.getFriends=async(req,res)=>{
 exports.updateFriendshipStatus = async(req,res)=>{
     try{
         const {friendshipId, status} =req.body;
+        console.log(friendshipId,status);
         //inpit validation
         if(!friendshipId || !["accepted", "declined"].includes(status)){
             return res.status(400).json({message:"friendship Id and status are required"});
         }
         const friendship = await  Friendship.findById(friendshipId);
+        // console.log("friendship",friendship);
         if(!friendship){
             return res.status(404).json({message:"Friendship not found"});
         }
         //ensure the user is part of the friendship//checking whether userId is friendship.user or friendship.friend
-        if(![friendship.user.toString(),friendship.friend.toString()].includes(req.userId)){
-            return res.status(403).json({ message: "You are not authorized to update this friendship" }); 
-        }
+        // if(![friendship.user.toString(),friendship.friend.toString()].includes(req.userId)){
+        //     return res.status(403).json({ message: "You are not authorized to update this friendship" }); 
+        // }
         //update status
         friendship.status = status;
+        console.log(friendship.status);
         await friendship.save();
         return res.status(200).json({message:"friendship status updated"});
     }catch(error){
+       // console.log("in error",friendship);
         return res.status(500).json({message:'error updating friendship status'});
     }
 }
@@ -88,6 +92,7 @@ exports.updateFriendshipStatus = async(req,res)=>{
 exports.removeFriend = async(req,res)=>{
     try{
         const {friendshipId} = req.params;
+        console.log("friendshipidId",friendshipId);
         const friendship = await Friendship.findById(friendshipId);
         if(!friendship){
             return res.status(404).json({message:"friendship not found"});

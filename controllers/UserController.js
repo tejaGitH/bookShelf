@@ -100,10 +100,11 @@ exports.signUp =  async(req,res)=>{
 
     // Create JWT token
     const payload = {
-      //  id: user._id,
+        id: user._id,
         name: user.username,
         role: user.role
     };
+    console.log("user._id",user._id);
     console.log(process.env.SECRET_KEY);
 
     const token = jwt.sign(payload, process.env.SECRET_KEY, { expiresIn: jwtExpireTime });
@@ -114,6 +115,14 @@ exports.signUp =  async(req,res)=>{
     
     // Return the token and user info
     return res.json({ success: true, user: {...payload,token} });
+    // return res.json({
+    //   success: true,
+    //   user: {
+    //       id: user._id,
+    //       name: user.username,
+    //       role: user.role,
+    //       token
+    //   }
 } catch (error) {
     console.error("Error during login:", error);
     return res.status(500).json({ message: "Error logging in", error });

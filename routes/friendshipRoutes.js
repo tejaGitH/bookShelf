@@ -9,7 +9,7 @@ router.get('/friends',friendshipController.getFriends);
 //update friendship status
 router.patch('/friendships',friendshipController.updateFriendshipStatus);
 //remoove friend
-router.delete('/friends/:id',friendshipController.removeFriend);
+router.delete('/friends/:friendshipId',friendshipController.removeFriend);
 //get friend updates
 router.get('/friend-updates',friendshipController.getFriendUpdates);
 //get dashboard data
