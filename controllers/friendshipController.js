@@ -5,27 +5,42 @@ const Review = require("../models/Review");
 //send friend request
 exports.sendFriendRequest = async(req,res)=>{
     try{
-        const {friendId} = req.body;
-        //const friendId="teja2";
-        const userId = req.userId;
-        //const userId = "teja";
-        console.log(req.body);
-        console.log("error............",userId);
-         //input validation
-         if(!friendId){
+        const {userId, friendId} = req.body;
+        // const userId = req.userId;
+        // console.log("userId",userId);
+        // console.log("friendId",friendId);
+
+        //input validation
+        if(!friendId){
             return res.status(400).json({message:"Friend Id required"});
         }
-        const existingFriendShip = await Friendship.findOne({user:userId, friend:friendId});
+        if(userId === friendId){
+            return res.status(400).json({message: "you cannot send a friend to yourself"});
+        }
+        //check if the friendship status already exists
+        const existingFriendShip = await Friendship.findOne({
+            $or: [
+                {user: userId, friend: friendId},
+                {user: friendId, friend: userId},
+             ]
+            // user: userId, friend: friendId
+        });
+        
         if(existingFriendShip){
             return res.status(400).json(({message:"Friendship already exists"}));
         }
-        const newFriendship = new Friendship({user: userId, friend: friendId, status:'pending'});
-        await newFriendship.save();
 
+        //create new friendShip req with status pending
+        const newFriendship = new Friendship({
+            user: userId,
+            friend: friendId, 
+            status:'pending'
+        });
+        await newFriendship.save();
         return res.status(201).json({message:"friend request sent"});
-    }catch(error){
-        console.log("error is ...........",req.body._id,error);
-        return res.status(500).json({message:"error sending friend request"});
+    }catch(error){    
+        console.log("error sending friend request:", error);
+        return res.status(500).json({message:"error sending friend request",error:error});
     }
 }
 
@@ -33,7 +48,11 @@ exports.sendFriendRequest = async(req,res)=>{
 exports.getFriends=async(req,res)=>{
     try{
         const userId = req.userId;
-        const friends = await Friendship.find({user:userId,status:'accepted'}).populate('friend');
+        //get friends where the status is accepted
+        const friends = await Friendship.find({
+            $or: [{user: userId}, {friend: userId}],
+            status: 'accepted',
+        }).populate('user', 'user email'); //populate both user and friend details
         return res.status(200).json(friends);
     }catch(error){
         return res.status(500).json({message:'error retreiving friends'});
@@ -45,13 +64,18 @@ exports.updateFriendshipStatus = async(req,res)=>{
     try{
         const {friendshipId, status} =req.body;
         //inpit validation
-        if(!friendshipId || !status){
+        if(!friendshipId || !["accepted", "declined"].includes(status)){
             return res.status(400).json({message:"friendship Id and status are required"});
         }
         const friendship = await  Friendship.findById(friendshipId);
         if(!friendship){
             return res.status(404).json({message:"Friendship not found"});
         }
+        //ensure the user is part of the friendship//checking whether userId is friendship.user or friendship.friend
+        if(![friendship.user.toString(),friendship.friend.toString()].includes(req.userId)){
+            return res.status(403).json({ message: "You are not authorized to update this friendship" }); 
+        }
+        //update status
         friendship.status = status;
         await friendship.save();
         return res.status(200).json({message:"friendship status updated"});
@@ -64,6 +88,10 @@ exports.updateFriendshipStatus = async(req,res)=>{
 exports.removeFriend = async(req,res)=>{
     try{
         const {friendshipId} = req.params;
+        const friendship = await Friendship.findById(friendshipId);
+        if(!friendship){
+            return res.status(404).json({message:"friendship not found"});
+        }
         await Friendship.findByIdAndDelete(friendshipId);
         return res.status(200).json({message:"friend removed"});
     }catch{
@@ -75,23 +103,51 @@ exports.removeFriend = async(req,res)=>{
 exports.getFriendUpdates= async(req,res)=>{
     try{
         const userId = req.userId;
-        const friends = await Friendship.find({user:userId, status: 'accepted'}).populate('friend');
-        const friendId = friends.map(friend=>friend.friend._id);
-        const reviews = await Review.find({user:{$in:friendId}}).populate('book').populate('user');
+        //get all accepted friends
+        const friends = await Friendship.find({
+            $or:[{user:userId, friend: userId}], 
+            status: 'accepted',
+        }).populate('user friend', 'username email');
+
+        const friendIds = friends.map((friendship) => {
+            return friendship.user._id.toString() === userId ? friendship.friend._id : friendship.user._id;
+        });
+        //get updates from friends(revies)
+        const reviews = await Review.find({
+            user:{$in:friendIds}
+        }).populate('book user','title username');
         return res.status(200).json(reviews);
     }catch(error){
         return res.status(500).json({message:"error retrieving friend updates"});
     }
 }
 
-//get dashboard data
+exports.getPendingFriendRequests = async (req, res) => {
+    try {
+        const userId = req.userId;
+        console.log("pendigUserId",userId);
 
-exports.getDashboard= async(req,res)=>{
-    try{
-        const userId=req.userId;
-        const friendUpdates= await this.getFriendUpdates(req,res);
-        return res.status(200).json(friendUpdates);
-    }catch(error){
-        return res.status(500).json({message:"error retrieving dashboard data"});
+        // Find all pending friend requests where the user is the recipient (friend).
+        const pendingRequests = await Friendship.find({
+            friend: userId,
+            status: 'pending'
+        }).populate('user', 'username email');  // Populate sender details for easy reference
+        console.log("Pending Friend Requests:", pendingRequests);
+        res.status(200).json(pendingRequests);
+    } catch (error) {
+        console.log("Error retrieving pending friend requests:", error);
+        res.status(500).json({ message: "Error retrieving pending friend requests" });
     }
-}
+};
+
+// //get dashboard data
+
+// exports.getDashboard= async(req,res)=>{
+//     try {
+//         const friendUpdates = await this.getFriendUpdates(req, res);
+//         return res.status(200).json(friendUpdates);
+//       } catch (error) {
+//         console.log("Error retrieving dashboard data:", error);
+//         return res.status(500).json({ message: "Error retrieving dashboard data" });
+//       }
+// }

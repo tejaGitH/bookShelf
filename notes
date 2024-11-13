@@ -1,0 +1,2 @@
+if req.user = decoded in verify token then in controllers const userId = req.user._id;
+if req.userId=decoded.id then userId= req.userId

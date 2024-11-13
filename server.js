@@ -45,27 +45,28 @@ mongoose.connect(dbURI).then(()=>{
 })
 
 // CORS configuration
-const corsOptions = {
-    origin: 'http://localhost:3002',  // Your frontend's URL
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],  // Allowed HTTP methods
-    //allowedHeaders: ['Content-Type', 'Authorization'], // Allowed headers (including token headers)
-    credentials: true,  // Allow credentials (cookies, authorization headers, etc.)
-};
+// const corsOptions = {
+//     origin: 'http://localhost:3002',  // Your frontend's URL
+//     methods: ['GET', 'POST', 'PUT', 'DELETE'],  // Allowed HTTP methods
+//     //allowedHeaders: ['Content-Type', 'Authorization'], // Allowed headers (including token headers)
+//     credentials: true,  // Allow credentials (cookies, authorization headers, etc.)
+// };
 
-app.use(cors(corsOptions)); 
+// app.use(cors(corsOptions)); 
 
 // app.use(express.json());
 // app.use(cors({
 //     origin:'http://localhost:3002',
 //     credentials: true
 // }));
-//app.use(cors());
+app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({extended: false}));
 app.use(cookieParser());
 app.use(passport.initialize());
 //loading passport starategies by passing passport instatnce
 require("./passport")(passport);
+app.use('/api',verifyToken);
 
 
 //public routes
@@ -73,8 +74,11 @@ app.use('/users',userRoutes);
 //app.use('/api/books', passport.authenticate('jwt', { session: false }), bookRoutes);
 
 //protected routes
-app.use('/api/books',verifyToken,bookRoutes);
-//app.use('/api', verifyToken,friendshipRoutes);
+// app.use('/api/books',verifyToken,bookRoutes);
+// app.use('/api/friendships', verifyToken, friendshipRoutes);
+app.use('/api/books',bookRoutes);
+app.use('/api/friendships', friendshipRoutes);
+
 
 app.use((err, req, res, next) => {
     console.error(err.stack);

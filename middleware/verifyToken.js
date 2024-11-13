@@ -5,8 +5,8 @@ const verifyToken=(req,res,next)=>{
     //     return next();
     // }
     const authHeader = req.headers['authorization'];
-    console.log("authHeader",authHeader);
-    console.log("all header",req.headers);
+    //console.log("authHeader",authHeader);
+    //console.log("all header",req.headers);
     
     if (!authHeader) {
       return res.status(403).json({ message: "Access Denied, No token Provided" });
@@ -19,8 +19,8 @@ const verifyToken=(req,res,next)=>{
     }
     // const bearerToken= token.split(' ')[1];
     jwt.verify(token, process.env.SECRET_KEY,(err, decoded)=>{
-        console.log(token);
-        console.log(JSON.stringify(decoded)) ;
+        //console.log(token);
+        //console.log(JSON.stringify(decoded)) ;
                //console.log(decoded);
         // if(err){
         //     console.log("decoded token:",decoded);
@@ -30,7 +30,7 @@ const verifyToken=(req,res,next)=>{
       //     console.log("Token verification error:", err);
       //     return res.status(401).json({ message: 'Invalid token' });
       // }
-      console.log("Decoded token:", decoded);
+      //console.log("Decoded token:", decoded);
         if (err) {
             if (err.name === 'TokenExpiredError') {
               return res.status(401).json({ message: 'Token expired' });
@@ -41,8 +41,10 @@ const verifyToken=(req,res,next)=>{
             }
             console.log(err);
           }
-          console.log("decoded token:",decoded);  
+          console.log("decoded .id:",decoded.id);  
+          console.log("decoded :",decoded); 
           req.userId = decoded.id;
+          console.log("userId:",req.userId); 
           next();//call to next( )allows the request to process next middleware  
     })
 }
