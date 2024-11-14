@@ -21,6 +21,7 @@ const verifyToken = require("./middleware/verifyToken");
 const userRoutes = require("./routes/userRoutes");
 const bookRoutes = require('./routes/bookRoutes');
 const friendshipRoutes = require("./routes/friendshipRoutes");
+const reviewRoutes = require("./routes/reviewRoutes");
 
 
 
@@ -76,8 +77,9 @@ app.use('/users',userRoutes);
 //protected routes
 // app.use('/api/books',verifyToken,bookRoutes);
 // app.use('/api/friendships', verifyToken, friendshipRoutes);
-app.use('/api/books',bookRoutes);
+app.use('/api/books', bookRoutes);
 app.use('/api/friendships', friendshipRoutes);
+app.use('/api/reviews', reviewRoutes);
 
 
 app.use((err, req, res, next) => {
