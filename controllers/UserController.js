@@ -31,7 +31,9 @@ exports.signUp =  async(req,res)=>{
             // Save the user to the database
             await newUser.save();
             console.log('Registered successfully');
-            return res.status(201).json({ message: "User registered successfully", user: newUser });
+            return res.status(201).json({
+                 message: "User registered successfully.Please Login to continue",
+                  user: {username: newUser.username, email: newUser.email} });
         } catch (error) {
             console.error("Error during sign up:", error);
             return res.status(500).json({ message: "Error registering user", error });
@@ -130,12 +132,21 @@ exports.signUp =  async(req,res)=>{
 };
  
  
- 
+ exports.logout = async(req,res)=>{
+    try{
+        res.clearCookie('token', {httpOnly: true, secure: process.env.NODE_ENV ==='production'});
+        console.log('Logout Successful');
+        return res.status(200).json({ success: true, message: 'Logout Successful'});
+    }catch(error){
+        console.log('Logout failed', error);
+        return res.status(500).json({success: false, message:'Error during logout', error});
+    }
+ }
 
 
 
 // exports.loginUser = (req,res)=>{
-//     console.log('welcome to loginUser');
+//     console.log('welcome to loginUser'); 
 //     const email = req.body.email;
 //     const password = req.body.password;
 //     User.findOne({email}).then((user)=>{

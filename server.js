@@ -56,11 +56,11 @@ mongoose.connect(dbURI).then(()=>{
 // app.use(cors(corsOptions)); 
 
 // app.use(express.json());
-// app.use(cors({
-//     origin:'http://localhost:3002',
-//     credentials: true
-// }));
-app.use(cors());
+app.use(cors({
+    origin:'http://localhost:3002',
+    credentials: true
+}));
+ //app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({extended: false}));
 app.use(cookieParser());

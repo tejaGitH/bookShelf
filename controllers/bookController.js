@@ -35,23 +35,48 @@ const searchBooks =async(req,res)=>{
     }
 }
 
-const addBook = async(req,res)=>{
-    try{
-        const {title, author, rating} = req.body;
-        console.log(req.body);
-        const newBook = new Book({title,author,rating});
+// const addBook = async(req,res)=>{
+//     try{
+//         // const {title, author, rating} = req.body;
+//         // console.log(req.body);
+//         // const newBook = new Book({title,author,rating});
+//         // const savedBook = await newBook.save();
+//         // res.json(savedBook);
+//     }catch(error){
+//         res.status(500).json({message:'Failed to addbook', error :error.message})
+//     }
+// }
+const addBook = async (req, res) => {
+    try {
+        const { title, author, rating, about} = req.body;
+        const userId = req.userId;
+        console.log("Received data:", req.body);
+
+        // Validation: Ensure required fields are present
+        if (!title || !author || rating === undefined) {
+            return res.status(400).json({ message: 'Title, author, and rating are required' });
+        }
+
+        // Create and save the new book
+        const newBook = new Book({ title, author, rating, about, userId });
         const savedBook = await newBook.save();
-        res.json(savedBook);
-    }catch(error){
-        res.status(500).json({message:'Failed to addbook', error :error.message})
+
+        // Send back the created book with a 201 status
+        return res.status(201).json(savedBook);
+    } catch (error) {
+        // Send a 500 error if there's an issue with saving the book
+        console.error("Error saving book:", error);
+        return res.status(500).json({ message: 'Failed to add book', error: error.message });
     }
 }
 
 const getUserBooks = async(req,res)=>{
     try{
         const userId = req.userId;
-        console.log("getUserBooks",req.userId);
+        console.log("userIdgetBooks", userId);
+        //console.log("getUserBooks",req.userId);
         const books = await Book.find({userId: userId});
+        console.log("getuserbooks",books);
         res.json(books);
     }catch(error){
         console.log(req.user);
@@ -74,8 +99,8 @@ const deleteBook = async(req,res)=>{
 const updateBook = async(req,res)=>{
     try{
         const bookId = req.params.id;
-        const { title, author, rating } = req.body;
-        const updatedBook = await Book.findByIdAndUpdate(bookId, { title, author, rating }, { new: true });
+        const { title, author, rating, about } = req.body;
+        const updatedBook = await Book.findByIdAndUpdate(bookId, { title, author, rating, about}, { new: true });
         if (!updatedBook) return res.status(404).json({ message: 'Book not found' });
         res.json(updatedBook);
     }catch(error){

@@ -14,6 +14,7 @@ exports.addReview = async(req,res)=>{
         });
         await newReview.save();
         return res.status(201).json({message:'Review added successfully'});
+        console.log("review added");
     }catch(error){
         console.error('Error adding review:', error);
         return res.status(500).json({message:'Error adding review', error});

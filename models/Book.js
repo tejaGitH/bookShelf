@@ -11,15 +11,19 @@ const bookSchema = new mongoose.Schema({
     },
     rating: {
         type : Number,
-        required: true,
+       // required: true,
         minimum : 1,
         maximum : 5,
     },
-    // userId: {  // Add userId to associate the book with a user
-    //     type: mongoose.Schema.Types.ObjectId,
-    //     ref: 'User',
-    //     required: true,
-    // },
+    about: {  // Add "about" field
+        type: String,
+        default: 'No description available',
+    },
+    userId: {  // Add userId to associate the book with a user
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true,
+    },
 });
 
 module.exports = mongoose.model('Book',bookSchema); //??\
