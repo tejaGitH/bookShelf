@@ -156,3 +156,38 @@ exports.getPendingFriendRequests = async (req, res) => {
 //         return res.status(500).json({ message: "Error retrieving dashboard data" });
 //       }
 // }
+
+
+exports.getEligibleUsers = async (req, res) => {
+    try {
+        const currentUserId = req.userId; // Extracted from verifyToken middleware
+
+        // Fetch all friendships involving the current user
+        const existingFriendships = await Friendship.find({
+            $or: [
+                { user: currentUserId },
+                { friend: currentUserId },
+            ],
+        });
+
+        // Extract IDs of friends and users with pending requests
+        const excludedUserIds = new Set(
+            existingFriendships.flatMap((friendship) => [
+                friendship.user.toString(),
+                friendship.friend.toString(),
+            ])
+        );
+
+        // Also exclude the current user
+        excludedUserIds.add(currentUserId);
+
+        // Find eligible users (users not in the excluded set)
+        const eligibleUsers = await User.find({
+            _id: { $nin: Array.from(excludedUserIds) },
+        }).select('_id username email'); // Return only necessary fields
+
+        res.status(200).json(eligibleUsers);
+    } catch (error) {
+        res.status(500).json({ message: 'Failed to fetch eligible users', error: error.message });
+    }
+};

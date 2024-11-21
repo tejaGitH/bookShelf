@@ -9,21 +9,35 @@ const userSchema = new mongoose.Schema({
     email: {
         type: String,
         required: true,
-        unique: true
+        unique: true,
     },
     password: {
         type: String,
-        required: true
+        required: true,
     },
     role: {
         type: String,
-        enum: ['user','admin'],
-        default: 'user'
+        enum: ['user', 'admin'],
+        default: 'user',
     },
-    friendships:[{
-        type : mongoose.Schema.Types.ObjectId,
-        ref: 'Friendship'
-    }]
+    friendships: [
+        {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Friendship',
+        },
+    ],
+    sentRequests: [
+        {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User', // Track users who received friend requests from this user
+        },
+    ],
+    receivedRequests: [
+        {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User', // Track users who sent friend requests to this user
+        },
+    ],
 });
 
-module.exports = mongoose.model('User',userSchema);
+module.exports = mongoose.model('User', userSchema);

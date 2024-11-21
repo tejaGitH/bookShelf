@@ -14,5 +14,7 @@ router.delete('/friends/:friendshipId',friendshipController.removeFriend);
 router.get('/friend-updates',friendshipController.getFriendUpdates);
 //get dashboard data
  router.get('/requests',friendshipController.getPendingFriendRequests);
+ //getUsers
+ router.get('/getUsers',friendshipController.getEligibleUsers);
 
 module.exports = router;
