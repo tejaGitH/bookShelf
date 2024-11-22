@@ -20,8 +20,8 @@ exports.sendFriendRequest = async(req,res)=>{
         //check if the friendship status already exists
         const existingFriendShip = await Friendship.findOne({
             $or: [
-                {user: userId, friend: friendId},
-                {user: friendId, friend: userId},
+                {user: userId, friend: friendId, status: 'pending'},
+                {user: friendId, friend: userId, status: 'pending'},
              ]
             // user: userId, friend: friendId
         });
@@ -38,9 +38,9 @@ exports.sendFriendRequest = async(req,res)=>{
         });
         await newFriendship.save();
         return res.status(201).json({message:"friend request sent"});
-    }catch(error){    
-        console.log("error sending friend request:", error);
-        return res.status(500).json({message:"error sending friend request",error:error});
+    }catch(error) {
+        console.log("Error sending friend request:", error);  // Log the error
+        return res.status(500).json({ message: "Error sending friend request", error: error.message || error });
     }
 }
 
@@ -157,37 +157,85 @@ exports.getPendingFriendRequests = async (req, res) => {
 //       }
 // }
 
-
 exports.getEligibleUsers = async (req, res) => {
     try {
-        const currentUserId = req.userId; // Extracted from verifyToken middleware
+        const currentUserId = req.userId;
 
-        // Fetch all friendships involving the current user
+        // Pagination inputs: limit and offset
+        const { limit = 6, offset = 0 } = req.query; // Default: 6 users per request, starting at 0
+
+        // Fetch existing friendships
         const existingFriendships = await Friendship.find({
-            $or: [
-                { user: currentUserId },
-                { friend: currentUserId },
-            ],
+            $or: [{ user: currentUserId }, { friend: currentUserId }],
+        }).populate('user friend');  // Ensure that `user` and `friend` fields are populated
+
+        // Exclude friends, pending requests, and the current user
+        const excludedUserIds = new Set();
+
+        existingFriendships.forEach(friendship => {
+            // Ensure that user and friend are defined before accessing _id
+            if (friendship.user && friendship.user._id && friendship.user._id.toString() !== currentUserId) {
+                excludedUserIds.add(friendship.user._id.toString());
+            }
+            if (friendship.friend && friendship.friend._id && friendship.friend._id.toString() !== currentUserId) {
+                excludedUserIds.add(friendship.friend._id.toString());
+            }
+
+            // Exclude users with a pending friendship request
+            if (friendship.status === 'pending') {
+                if (friendship.user && friendship.user._id.toString() !== currentUserId) {
+                    excludedUserIds.add(friendship.user._id.toString());
+                } else if (friendship.friend && friendship.friend._id.toString() !== currentUserId) {
+                    excludedUserIds.add(friendship.friend._id.toString());
+                }
+            }
         });
 
-        // Extract IDs of friends and users with pending requests
-        const excludedUserIds = new Set(
-            existingFriendships.flatMap((friendship) => [
-                friendship.user.toString(),
-                friendship.friend.toString(),
-            ])
-        );
+        excludedUserIds.add(currentUserId); // Exclude the current user
 
-        // Also exclude the current user
-        excludedUserIds.add(currentUserId);
-
-        // Find eligible users (users not in the excluded set)
+        // Fetch eligible users
         const eligibleUsers = await User.find({
             _id: { $nin: Array.from(excludedUserIds) },
-        }).select('_id username email'); // Return only necessary fields
+        })
+            .select('_id username email')
+            .skip(Number(offset))
+            .limit(Number(limit)); // Pagination applied
 
         res.status(200).json(eligibleUsers);
     } catch (error) {
         res.status(500).json({ message: 'Failed to fetch eligible users', error: error.message });
     }
 };
+// exports.getEligibleUsers = async (req, res) => {
+//     try {
+//         const currentUserId = req.userId; // Extracted from verifyToken middleware
+
+//         // Fetch all friendships involving the current user
+//         const existingFriendships = await Friendship.find({
+//             $or: [
+//                 { user: currentUserId },
+//                 { friend: currentUserId },
+//             ],
+//         });
+
+//         // Extract IDs of friends and users with pending requests
+//         const excludedUserIds = new Set(
+//             existingFriendships.flatMap((friendship) => [
+//                 friendship.user.toString(),
+//                 friendship.friend.toString(),
+//             ])
+//         );
+
+//         // Also exclude the current user
+//         excludedUserIds.add(currentUserId);
+
+//         // Find eligible users (users not in the excluded set)
+//         const eligibleUsers = await User.find({
+//             _id: { $nin: Array.from(excludedUserIds) },
+//         }).select('_id username email'); // Return only necessary fields
+
+//         res.status(200).json(eligibleUsers);
+//     } catch (error) {
+//         res.status(500).json({ message: 'Failed to fetch eligible users', error: error.message });
+//     }
+// };
