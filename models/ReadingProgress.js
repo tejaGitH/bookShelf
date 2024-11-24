@@ -4,11 +4,13 @@ const mongoose = require('mongoose');
 const readingProgressSchema = new mongoose.Schema({
   user: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User' 
+    ref: 'User' ,
+    required: true,
     },
   book: { 
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Book' 
+    ref: 'Book' ,
+    required: true,
     },
   progress: {
      type: Number, 

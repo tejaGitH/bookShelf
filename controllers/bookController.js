@@ -1,5 +1,6 @@
 const api = require("../middleware/api");
 const Book = require("../models/Book");
+const ReadingProgress = require("../models/ReadingProgress");
 
 
 const getBestSellers = async(req,res)=>{
@@ -50,7 +51,7 @@ const addBook = async (req, res) => {
     try {
         const { title, author, rating, about} = req.body;
         const userId = req.userId;
-        console.log("Received data:", req.body);
+        // console.log("Received data:", req.body);
 
         // Validation: Ensure required fields are present
         if (!title || !author || rating === undefined) {
@@ -73,7 +74,7 @@ const addBook = async (req, res) => {
 const getUserBooks = async(req,res)=>{
     try{
         const userId = req.userId;
-        console.log("userIdgetBooks", userId);
+        // console.log("userIdgetBooks", userId);
         //console.log("getUserBooks",req.userId);
         const books = await Book.find({userId: userId});
         console.log("getuserbooks",books);
@@ -104,9 +105,84 @@ const updateBook = async(req,res)=>{
         if (!updatedBook) return res.status(404).json({ message: 'Book not found' });
         res.json(updatedBook);
     }catch(error){
+        // console.log("UpdateBook Ran");
         res.status(500).json({message:'failed to Updatye book'});
     }
 }
+
+const updateReadingProgress = async (req, res) => {
+  try {
+    const { progress, comments } = req.body;
+    const bookId = req.params.id;
+    const userId = req.userId;
+
+    // Verify the book exists and belongs to the user
+    const book = await Book.findOne({ _id: bookId, userId });
+    if (!book) {
+      return res.status(404).json({ message: 'Book not found or not added by this user' });
+    }
+
+    // Check if a ReadingProgress entry exists for this user and book
+    let readingProgress = await ReadingProgress.findOne({ book: bookId, user: userId });
+
+    if (readingProgress) {
+      // Update existing progress
+      readingProgress.progress = progress;
+      readingProgress.comments = comments || readingProgress.comments;
+      readingProgress.createdAt = Date.now();
+    } else {
+      // Create new ReadingProgress
+      readingProgress = new ReadingProgress({
+        user: userId,
+        book: bookId,
+        progress,
+        comments,
+      });
+    }
+
+    // Update `currentlyReading` based on progress
+    if (progress === 100) {
+      book.currentlyReading = false; // Mark as not currently reading
+    } else {
+      book.currentlyReading = true; // Mark as currently reading
+    }
+
+    await book.save();
+    await readingProgress.save();
+
+    res.status(200).json({
+      message: 'Reading progress updated successfully',
+      readingProgress,
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Error updating reading progress', error: error.message });
+  }
+};
+const getCurrentlyReadingBooks = async (req, res) => {
+    try {
+        const userId = req.userId;
+        const books = await Book.find({ userId, currentlyReading: true });
+        res.status(200).json(books);
+    } catch (error) {
+        res.status(500).json({ message: "Error fetching currently reading books", error: error.message });
+    }
+};
+
+const getReadingProgress = async (req, res) => {
+    try {
+      const userId = req.userId;
+      const  bookId = req.params.id;
+  
+      const readingProgress = await ReadingProgress.findOne({ book: bookId, user: userId }).populate('book');
+      if (!readingProgress) {
+        return res.status(404).json({ message: 'Reading progress not found for this book' });
+      }
+  
+      res.status(200).json(readingProgress);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching reading progress', error: error.message });
+    }
+  };
 
 
 
@@ -117,5 +193,8 @@ module.exports={
     addBook,
     getUserBooks,
     deleteBook,
-    updateBook
+    updateBook,
+    updateReadingProgress,
+    getCurrentlyReadingBooks,
+    getReadingProgress
 };

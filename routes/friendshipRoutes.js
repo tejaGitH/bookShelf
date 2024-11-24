@@ -12,9 +12,11 @@ router.patch('/friendships',friendshipController.updateFriendshipStatus);
 router.delete('/friends/:friendshipId',friendshipController.removeFriend);
 //get friend updates
 router.get('/friend-updates',friendshipController.getFriendUpdates);
-//get dashboard data
+
  router.get('/requests',friendshipController.getPendingFriendRequests);
  //getUsers
  router.get('/getUsers',friendshipController.getEligibleUsers);
+ //getSocialUpdates
+ router.get('/updates', friendshipController.getSocialUpdates);
 
 module.exports = router;

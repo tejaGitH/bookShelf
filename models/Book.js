@@ -24,6 +24,10 @@ const bookSchema = new mongoose.Schema({
         ref: 'User',
         required: true,
     },
+    currentlyReading: { 
+        type: Boolean ,
+        default: true,
+    }
 });
 
 module.exports = mongoose.model('Book',bookSchema); //??\
