@@ -377,24 +377,31 @@ exports.getEligibleUsers = async (req, res) => {
 
 
 
- exports.getSocialUpdates = async (req, res) => {
+// friendshipController.js
+exports.getSocialUpdates = async (req, res) => {
     try {
         const userId = req.userId;
+        console.log("User ID:", userId); // Add logging
+
         const friendships = await Friendship.find({
             $or: [{ user: userId }, { friend: userId }],
             status: "accepted"
         });
+        console.log("Friendships found:", friendships); // Add logging
 
         const friendIds = friendships.map(f =>
             f.user.toString() === userId ? f.friend.toString() : f.user.toString()
         );
+        console.log("Friend IDs:", friendIds); // Add logging
 
         const updates = await Review.find({ user: { $in: friendIds } })
             .populate("user", "username")
             .populate("book", "title");
+        console.log("Updates found:", updates); // Add logging
 
         res.status(200).json(updates);
     } catch (error) {
+        console.error("Error fetching updates:", error); // Add logging
         res.status(500).json({ message: "Error fetching updates", error: error.message });
     }
 };
