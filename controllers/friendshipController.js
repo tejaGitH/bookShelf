@@ -1,6 +1,7 @@
 const Friendship = require("../models/Friendship");
 const User = require("../models/User");
 const Review = require("../models/Review");
+const mongoose = require('mongoose');
 
 //send friend request
 // friendshipController.js
@@ -335,6 +336,77 @@ exports.getPendingFriendRequests = async (req, res) => {
 // friendshipController.js
 // friendshipController.js
 // friendshipController.js
+
+// exports.getEligibleUsers = async (req, res) => {
+//     try {
+//         const currentUserId = req.userId;
+//         const { limit = 5, offset = 0 } = req.query;
+
+//         const currentUser = await User.findById(currentUserId).populate('sentRequests');
+
+//         if (!currentUser) {
+//             return res.status(404).json({ message: 'User not found' });
+//         }
+
+//         const sentRequestsIds = currentUser.sentRequests.map((user) => user._id.toString());
+//         sentRequestsIds.push(currentUserId); // Add current user ID to exclusion list
+
+//         const eligibleUsersQuery = User.aggregate([
+//             {
+//                 $match: {
+//                     _id: { $nin: sentRequestsIds.map((id) => new mongoose.Types.ObjectId(id)) }, // Correct use of `new`
+//                 },
+//             },
+//             {
+//                 $lookup: {
+//                     from: 'friendships',
+//                     let: { userId: '$_id' },
+//                     pipeline: [
+//                         {
+//                             $match: {
+//                                 $expr: {
+//                                     $and: [
+//                                         { $eq: ['$user', '$$userId'] },
+//                                         { $eq: ['$friend', new mongoose.Types.ObjectId(currentUserId)] },
+//                                     ],
+//                                 },
+//                             },
+//                         },
+//                     ],
+//                     as: 'friendshipStatus',
+//                 },
+//             },
+//             {
+//                 $project: {
+//                     _id: 1,
+//                     username: 1,
+//                     email: 1,
+//                     status: { $arrayElemAt: ['$friendshipStatus.status', 0] },
+//                 },
+//             },
+//         ]);
+
+//         const eligibleUsers = await eligibleUsersQuery
+//             .skip(Number(offset))
+//             .limit(Number(limit));
+
+//         const totalEligibleUsers = await User.countDocuments({
+//             _id: { $nin: sentRequestsIds.map((id) => new mongoose.Types.ObjectId(id)) },
+//         });
+
+//         const hasMore = Number(offset) + eligibleUsers.length < totalEligibleUsers;
+
+//         res.status(200).json({
+//             users: eligibleUsers,
+//             hasMore,
+//             total: totalEligibleUsers,
+//         });
+//     } catch (error) {
+//         console.error('Error fetching eligible users:', error);
+//         res.status(500).json({ message: 'Error fetching eligible users', error: error.message });
+//     }
+// };
+
 exports.getEligibleUsers = async (req, res) => {
     try {
         const currentUserId = req.userId;
@@ -375,36 +447,43 @@ exports.getEligibleUsers = async (req, res) => {
 };
 
 
-
-
 // friendshipController.js
 exports.getSocialUpdates = async (req, res) => {
     try {
         const userId = req.userId;
-        console.log("User ID:", userId); // Add logging
+        console.log("User ID:", userId); // Logging
 
         const friendships = await Friendship.find({
             $or: [{ user: userId }, { friend: userId }],
             status: "accepted"
         });
-        console.log("Friendships found:", friendships); // Add logging
+        console.log("Friendships found:", friendships); // Logging
 
-        const friendIds = friendships.map(f =>
-            f.user.toString() === userId ? f.friend.toString() : f.user.toString()
-        );
-        console.log("Friend IDs:", friendIds); // Add logging
+        // Safely handle undefined values in friendships array
+        const friendIds = friendships.map(f => {
+            if (!f.user || !f.friend) {
+                console.error("Undefined user or friend in friendship:", f);
+                return null;
+            }
+            return f.user.toString() === userId ? f.friend.toString() : f.user.toString();
+        }).filter(Boolean);
+        console.log("Friend IDs:", friendIds); // Logging
 
         const updates = await Review.find({ user: { $in: friendIds } })
             .populate("user", "username")
             .populate("book", "title");
-        console.log("Updates found:", updates); // Add logging
+        console.log("Updates found:", updates); // Logging
 
         res.status(200).json(updates);
     } catch (error) {
-        console.error("Error fetching updates:", error); // Add logging
+        console.error("Error fetching updates:", error); // Logging
         res.status(500).json({ message: "Error fetching updates", error: error.message });
     }
 };
+
+
+
+
 
 
 
