@@ -66,7 +66,7 @@ exports.getFriends=async(req,res)=>{
         const friends = await Friendship.find({
             $or: [{user: userId}, {friend: userId}],
             status: 'accepted',
-        }).populate('user', 'user email'); //populate both user and friend details
+        }).populate('user friend', 'user email'); //populate both user and friend details
         return res.status(200).json(friends);
     }catch(error){
         return res.status(500).json({message:'error retreiving friends'});
@@ -406,42 +406,101 @@ exports.getPendingFriendRequests = async (req, res) => {
 //         res.status(500).json({ message: 'Error fetching eligible users', error: error.message });
 //     }
 // };
+// exports.getEligibleUsers = async (req, res) => {
+//     try {
+//         const currentUserId = req.userId;
+//         const { limit = 5, offset = 0 } = req.query;
+
+//         // Fetching sent requests using the Friendship model
+//         const sentRequests = await Friendship.find({ user: currentUserId }).populate('friend');
+//         const receivedRequests = await Friendship.find({ friend: currentUserId }).populate('user');
+
+//         // Safely handle undefined values in sentRequests and receivedRequests arrays
+//         const sentRequestsIds = sentRequests.map(friendship => friendship.friend?._id?.toString()).filter(Boolean);
+//         const receivedRequestsIds = receivedRequests.map(friendship => friendship.user?._id?.toString()).filter(Boolean);
+
+//         const exclusionIds = new Set([...sentRequestsIds, ...receivedRequestsIds, currentUserId]);
+
+//         const eligibleUsersQuery = User.find({
+//             _id: { $nin: Array.from(exclusionIds) }
+//         }).select('_id username email');
+
+//         const eligibleUsers = await eligibleUsersQuery.skip(Number(offset)).limit(Number(limit));
+//         const totalEligibleUsers = await User.countDocuments({
+//             _id: { $nin: Array.from(exclusionIds) }
+//         });
+
+//         const hasMore = Number(offset) + eligibleUsers.length < totalEligibleUsers;
+
+//         res.status(200).json({
+//             users: eligibleUsers,
+//             hasMore,
+//             total: totalEligibleUsers
+//         });
+//     } catch (error) {
+//         console.log('Error fetching eligible users:', error);
+//         res.status(500).json({ message: 'Error fetching eligible users', error: error.message });
+//     }
+// };
+
+
+
+// exports.getEligibleUsers = async (req, res) => {
+//     try {
+//         const { limit = 5, offset = 0 } = req.query;
+//         const userId = req.userId;
+
+//         const sentRequests = await Friendship.find({ user: userId, status: 'pending' }).populate('friend');
+//         const receivedRequests = await Friendship.find({ friend: userId, status: 'pending' }).populate('user');
+
+//         const excludedIds = new Set([...sentRequests.map(f => f.friend._id), ...receivedRequests.map(f => f.user._id), userId]);
+
+//         const eligibleUsers = await User.find({ _id: { $nin: Array.from(excludedIds) } })
+//             .skip(Number(offset))
+//             .limit(Number(limit))
+//             .select('_id username email');
+
+//         const totalEligibleUsers = await User.countDocuments({ _id: { $nin: Array.from(excludedIds) } });
+
+//         res.status(200).json({
+//             users: eligibleUsers,
+//             total: totalEligibleUsers,
+//             hasMore: Number(offset) + eligibleUsers.length < totalEligibleUsers
+//         });
+//     } catch (error) {
+//         console.error('Error fetching eligible users:', error);
+//         res.status(500).json({ message: 'Error fetching eligible users', error: error.message });
+//     }
+// };
 
 exports.getEligibleUsers = async (req, res) => {
     try {
-        const currentUserId = req.userId;
         const { limit = 5, offset = 0 } = req.query;
+        const userId = req.userId;
 
-        const currentUser = await User.findById(currentUserId).populate('sentRequests');
+        const sentRequests = await Friendship.find({ user: userId, status: 'pending' }).populate('friend');
+        const receivedRequests = await Friendship.find({ friend: userId, status: 'pending' }).populate('user');
 
-        if (!currentUser) {
-            return res.status(404).json({ message: 'User not found' });
-        }
+        const excludedIds = new Set([
+            ...sentRequests.map(f => f.friend && f.friend._id).filter(Boolean), 
+            ...receivedRequests.map(f => f.user && f.user._id).filter(Boolean), 
+            userId
+        ]);
 
-        const sentRequestsIds = currentUser.sentRequests.map((user) => user._id.toString());
-        sentRequestsIds.push(currentUserId); // Add current user ID to exclusion list
-
-        const eligibleUsersQuery = User.find({
-            _id: { $nin: sentRequestsIds }  // Exclude current user and sent requests
-        }).select('_id username email');
-
-        const eligibleUsers = await eligibleUsersQuery
+        const eligibleUsers = await User.find({ _id: { $nin: Array.from(excludedIds) } })
             .skip(Number(offset))
-            .limit(Number(limit));
+            .limit(Number(limit))
+            .select('_id username email');
 
-        const totalEligibleUsers = await User.countDocuments({
-            _id: { $nin: sentRequestsIds }
-        });
-
-        const hasMore = Number(offset) + eligibleUsers.length < totalEligibleUsers;
+        const totalEligibleUsers = await User.countDocuments({ _id: { $nin: Array.from(excludedIds) } });
 
         res.status(200).json({
             users: eligibleUsers,
-            hasMore,
-            total: totalEligibleUsers
+            total: totalEligibleUsers,
+            hasMore: Number(offset) + eligibleUsers.length < totalEligibleUsers
         });
     } catch (error) {
-        console.log('Error fetching eligible users:', error);
+        console.error('Error fetching eligible users:', error);
         res.status(500).json({ message: 'Error fetching eligible users', error: error.message });
     }
 };
@@ -456,7 +515,7 @@ exports.getSocialUpdates = async (req, res) => {
         const friendships = await Friendship.find({
             $or: [{ user: userId }, { friend: userId }],
             status: "accepted"
-        });
+        }).populate("user friend");
         console.log("Friendships found:", friendships); // Logging
 
         // Safely handle undefined values in friendships array
@@ -465,7 +524,7 @@ exports.getSocialUpdates = async (req, res) => {
                 console.error("Undefined user or friend in friendship:", f);
                 return null;
             }
-            return f.user.toString() === userId ? f.friend.toString() : f.user.toString();
+            return f.user._id.toString() === userId ? f.friend._id.toString() : f.user._id.toString();
         }).filter(Boolean);
         console.log("Friend IDs:", friendIds); // Logging
 
@@ -482,6 +541,41 @@ exports.getSocialUpdates = async (req, res) => {
 };
 
 
+
+
+// exports.getCombinedFriendUpdates = async (req, res) => {
+//     try {
+//         const userId = req.userId;
+//         console.log("User ID:", userId); // Logging
+
+//         const friendships = await Friendship.find({
+//             $or: [{ user: userId }, { friend: userId }],
+//             status: "accepted"
+//         }).populate("user friend", "username email");
+//         console.log("Friendships found:", friendships); // Logging
+
+//         // Safely handle undefined values in friendships array
+//         const friendIds = friendships.map(f => {
+//             if (!f.user || !f.friend) {
+//                 console.error("Undefined user or friend in friendship:", f);
+//                 return null;
+//             }
+//             return f.user._id.toString() === userId ? f.friend._id.toString() : f.user._id.toString();
+//         }).filter(Boolean);
+//         console.log("Friend IDs:", friendIds); // Logging
+
+//         const updates = await Review.find({ user: { $in: friendIds } })
+//             .populate("user", "username")
+//             .populate("book", "title");
+//         console.log("Updates found:", updates); // Logging
+
+//         res.status(200).json(updates);
+//     } catch (error) {
+//         console.error("Error fetching updates:", error); // Logging
+//         res.status(500).json({ message: "Error retrieving friend updates", error: error.message });
+//     }
+// };
+// 
 
 
 
