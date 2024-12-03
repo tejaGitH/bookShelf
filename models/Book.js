@@ -26,7 +26,12 @@ const bookSchema = new mongoose.Schema({
     },
     currentlyReading: { 
         type: Boolean ,
-        default: true,
+        default: false,
+    },
+    status:{
+        type: String,
+        enum: ['reading','finished','not reading'],
+        default: 'not reading',
     }
 });
 

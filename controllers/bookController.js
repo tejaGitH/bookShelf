@@ -49,7 +49,7 @@ const searchBooks =async(req,res)=>{
 // }
 const addBook = async (req, res) => {
     try {
-        const { title, author, rating, about} = req.body;
+        const { title, author, rating, about, image} = req.body;
         const userId = req.userId;
         // console.log("Received data:", req.body);
 
@@ -59,7 +59,7 @@ const addBook = async (req, res) => {
         }
 
         // Create and save the new book
-        const newBook = new Book({ title, author, rating, about, userId });
+        const newBook = new Book({ title, author, rating, about, image, userId });
         const savedBook = await newBook.save();
 
         // Send back the created book with a 201 status
@@ -143,8 +143,10 @@ const updateReadingProgress = async (req, res) => {
     // Update `currentlyReading` based on progress
     if (progress === 100) {
       book.currentlyReading = false; // Mark as not currently reading
+      book.status='finished';
     } else {
       book.currentlyReading = true; // Mark as currently reading
+      book.status="reading";
     }
 
     await book.save();
@@ -184,6 +186,56 @@ const getReadingProgress = async (req, res) => {
     }
   };
 
+  const markBookAsFinished = async (req, res) => {
+    try {
+      const bookId = req.params.id;
+      const userId = req.userId;
+  
+      // Verify the book exists and belongs to the user
+      const book = await Book.findOne({ _id: bookId, userId });
+      if (!book) {
+        return res.status(404).json({ message: 'Book not found or not added by this user' });
+      }
+  
+      // Mark the book as finished
+      book.currentlyReading = false;
+      book.status='finished';
+      await book.save();
+  
+      res.status(200).json({
+        message: 'Book marked as finished successfully',
+        book,
+      });
+    } catch (error) {
+      res.status(500).json({ message: 'Error marking book as finished', error: error.message });
+    }
+  };
+  
+  const markBookAsCurrentlyReading = async (req, res) => {
+    try {
+      const bookId = req.params.id;
+      const userId = req.userId;
+  
+      // Verify the book exists and belongs to the user
+      const book = await Book.findOne({ _id: bookId, userId });
+      if (!book) {
+        return res.status(404).json({ message: 'Book not found or not added by this user' });
+      }
+  
+      // Mark the book as currently reading
+      book.currentlyReading = true;
+      book.status='reading';
+      await book.save();
+  
+      res.status(200).json({
+        message: 'Book marked as currently reading successfully',
+        book,
+      });
+    } catch (error) {
+      res.status(500).json({ message: 'Error marking book as currently reading', error: error.message });
+    }
+  };
+
 
 
 module.exports={
@@ -196,5 +248,7 @@ module.exports={
     updateBook,
     updateReadingProgress,
     getCurrentlyReadingBooks,
-    getReadingProgress
+    getReadingProgress,
+    markBookAsCurrentlyReading,
+    markBookAsFinished,
 };

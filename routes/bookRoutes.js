@@ -16,8 +16,10 @@ router.post('/add', bookController.addBook);
 router.get('/user-books', bookController.getUserBooks);
 router.delete('/:id',bookController.deleteBook);
 router.put('/:id',bookController.updateBook);
-router.get('/readingBooks', bookController.getCurrentlyReadingBooks);
+router.get('/currently-reading', bookController.getCurrentlyReadingBooks);
 router.get('/progress/:id', bookController.getReadingProgress);
 router.put('/progress/:id', bookController.updateReadingProgress);
+router.put('/finish/:id', bookController.markBookAsFinished);
+router.put('/mark-as-reading/:id', bookController.markBookAsCurrentlyReading);
 
 module.exports = router;
