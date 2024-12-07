@@ -40,4 +40,7 @@ const userSchema = new mongoose.Schema({
     ],
 });
 
+// Create text index on username and email fields
+userSchema.index({ username: 'text', email: 'text' });
+
 module.exports = mongoose.model('User', userSchema);

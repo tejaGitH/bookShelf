@@ -1,5 +1,6 @@
 const api = require("../middleware/api");
 const Book = require("../models/Book");
+const User = require("../models/User");
 const ReadingProgress = require("../models/ReadingProgress");
 
 
@@ -47,6 +48,45 @@ const searchBooks =async(req,res)=>{
 //         res.status(500).json({message:'Failed to addbook', error :error.message})
 //     }
 // }
+// Search user and friends' books based on name and author
+const searchUserAndFriendsBooks = async (req, res) => {
+  const query = req.params.query;
+  try {
+      const userBooks = await Book.find({ $text: { $search: query }, userId: req.userId });
+      const friends = await User.find({ friendships: req.userId });
+      const friendsBooks = await Book.find({ userId: { $in: friends.map(friend => friend._id) }, $text: { $search: query } });
+
+      console.log("searchBooks", userBooks, friends, friendsBooks);
+      const data = {
+          userBooks,
+          friendsBooks
+      };
+      console.log(data);
+      res.json(data);
+  } catch (error) {
+      console.error("Error searching user and friends books:", error);
+      res.status(500).json({ message: 'Error searching user and friends books', error: error.message });
+  }
+};
+
+
+
+// Search people
+const searchPeople = async (req, res) => {
+    const query = req.params.query;
+    try {
+        // Example logic to search for people based on name or other criteria
+        const people = await User.find({ $text: { $search: query } });
+        res.json(people);
+    } catch (error) {
+        res.status(500).json({ message: 'Error searching people' });
+    }
+};
+
+
+
+
+
 const addBook = async (req, res) => {
     try {
         const { title, author, rating, about, image} = req.body;
@@ -237,6 +277,29 @@ const getReadingProgress = async (req, res) => {
   };
 
 
+  const getFinishedBooks = async (req, res) => {
+    try {
+      const userId = req.userId;
+      const finishedBooks = await Book.find({ userId, status: 'finished' })
+      .populate('userId','username')
+      .populate({
+        path: 'reviews',
+        model: 'Review'
+      });
+  
+      if (!finishedBooks) {
+        return res.status(404).json({ message: 'No finished books found' });
+      }
+  
+      res.status(200).json(finishedBooks);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching finished books', error: error.message });
+    }
+  };
+
+  
+
+
 
 module.exports={
     getBestSellers,
@@ -251,4 +314,7 @@ module.exports={
     getReadingProgress,
     markBookAsCurrentlyReading,
     markBookAsFinished,
+    getFinishedBooks,
+    searchUserAndFriendsBooks,
+    searchPeople,
 };

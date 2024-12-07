@@ -1,41 +1,44 @@
-const mongoose = require("mongoose");
+const mongoose = require('mongoose');
 
 const bookSchema = new mongoose.Schema({
-    title:{
-        type : String,
+    title: {
+        type: String,
         required: true,
     },
     author: {
-        type : String,
+        type: String,
         required: true,
     },
     rating: {
-        type : Number,
-       // required: true,
-        minimum : 1,
-        maximum : 5,
+        type: Number,
+        min: 1,
+        max: 5,
     },
-    about: {  // Add "about" field
+    about: {
         type: String,
         default: 'No description available',
     },
-    userId: {  // Add userId to associate the book with a user
+    userId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
         required: true,
     },
     currentlyReading: { 
-        type: Boolean ,
+        type: Boolean,
         default: false,
     },
-    status:{
+    status: {
         type: String,
-        enum: ['reading','finished','not reading'],
+        enum: ['reading', 'finished', 'not reading'],
         default: 'not reading',
-    }
+    },
+    reviews: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Review'
+    }]
 });
 
-module.exports = mongoose.model('Book',bookSchema); //??\
+// Create text index on title and author fields
+bookSchema.index({ title: 'text', author: 'text' });
 
-
-
+module.exports = mongoose.model('Book', bookSchema);

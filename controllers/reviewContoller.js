@@ -1,4 +1,5 @@
 const Review = require('../models/Review');
+const Book = require('../models/Book')
 
 //**POST**Add a review
 exports.addReview = async(req,res)=>{
@@ -13,6 +14,12 @@ exports.addReview = async(req,res)=>{
             review
         });
         await newReview.save();
+
+        //Add the review to the books review array
+        const book = await Book.findById(bookId);
+        book.reviews.push(newReview._id);
+        await book.save();
+
         return res.status(201).json({message:'Review added successfully'});
         console.log("review added");
     }catch(error){
