@@ -6,5 +6,7 @@ router.post('/:bookId/reviews', reviewController.addReview);
 router.get('/:bookId/reviews', reviewController.getReviewsForBook);
 router.put('/:reviewId', reviewController.updateReview);
 router.delete('/:reviewId',reviewController.deleteReview);
+router.post('/:reviewId/like', reviewController.likeReview);
+router.post('/:reviewId/comments', reviewController.addComment);
 
 module.exports = router;

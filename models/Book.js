@@ -35,7 +35,11 @@ const bookSchema = new mongoose.Schema({
     reviews: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Review'
-    }]
+    }],
+    isFriendBook: {
+        type: Boolean,
+        default: false,
+    }
 });
 
 // Create text index on title and author fields

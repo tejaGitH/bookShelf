@@ -2,6 +2,8 @@ const api = require("../middleware/api");
 const Book = require("../models/Book");
 const User = require("../models/User");
 const ReadingProgress = require("../models/ReadingProgress");
+const Friendship = require('../models/Friendship');
+const mongoose = require('mongoose');
 
 
 const getBestSellers = async(req,res)=>{
@@ -296,8 +298,76 @@ const getReadingProgress = async (req, res) => {
       res.status(500).json({ message: 'Error fetching finished books', error: error.message });
     }
   };
-
   
+const getFriendsBooks = async (req, res) => {
+    try {
+        const userId = req.userId;
+
+        // Find friends' user IDs
+        const friendships = await Friendship.find({
+            $or: [{ user: userId }, { friend: userId }],
+            status: 'accepted',
+        });
+        console.log('friendsUswerBooks', friendships);
+
+        const friendUserIds = friendships.map(f => 
+            f.user.toString() === userId ? f.friend : f.user
+        );
+        console.log('friendsUswerBooksIds', friendUserIds);
+
+        // Find books that belong to friends
+        const friendsBooks = await Book.find({ userId: { $in: friendUserIds } })
+            .populate('userId')
+            .exec();
+            console.log('friendsBooks', friendsBooks);
+        res.status(200).json(friendsBooks);
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching friends books', error: error.message });
+    }
+};
+
+
+
+const addFriendBookToUser = async (req, res) => {
+    try {
+        const { bookId } = req.params;
+        const userId = req.userId;
+
+        // Validate and convert bookId to ObjectId
+        if (!mongoose.Types.ObjectId.isValid(bookId)) {
+            return res.status(400).json({ message: 'Invalid book ID format' });
+        }
+
+        // Fetch the book by ID
+        const book = await Book.findById(bookId);
+
+        if (!book) {
+            return res.status(404).json({ message: 'Book not found' });
+        }
+
+        // Create a new book document for the user, keeping the original author
+        const newBook = new Book({
+            title: book.title,
+            author: book.author,
+            rating: book.rating,
+            about: book.about,
+            image: book.image,
+            userId: userId,
+            isFriendBook: true,
+        });
+
+        const savedBook = await newBook.save();
+
+        return res.status(201).json(savedBook);
+    } catch (error) {
+        console.error('Error adding friend\'s book to user:', error);
+        return res.status(500).json({ message: 'Failed to add friend\'s book to user', error: error.message });
+    }
+};
+
+
+
+
 
 
 
@@ -317,4 +387,6 @@ module.exports={
     getFinishedBooks,
     searchUserAndFriendsBooks,
     searchPeople,
+    getFriendsBooks,
+    addFriendBookToUser
 };
