@@ -4,11 +4,40 @@ const Friendship = require('../models/Friendship');
 const User = require('../models/User');
 
 //**POST**Add a review
-exports.addReviewBook = async(req,res)=>{
-    const {bookId} = req.params;
-    const {rating, review} = req.body;
+// exports.addReviewBook = async(req,res)=>{
+//     const {bookId} = req.params;
+//     const {rating, review} = req.body;
 
-    try{
+//     try{
+//         const newReview = new Review({
+//             book: bookId,
+//             user: req.userId,
+//             rating,
+//             review
+//         });
+//         await newReview.save();
+
+//         //Add the review to the books review array
+//         const book = await Book.findById(bookId);
+//         book.reviews.push(newReview._id);
+//         await book.save();
+
+//         return res.status(201).json({message:'Review added successfully'});
+//         console.log("review added");
+//     }catch(error){
+//         console.error('Error adding review:', error);
+//         return res.status(500).json({message:'Error adding review', error});
+//     }
+// };
+
+
+// Add a review
+
+exports.addReview = async (req, res) => {
+    const { bookId } = req.params;
+    const { rating, review } = req.body;
+
+    try {
         const newReview = new Review({
             book: bookId,
             user: req.userId,
@@ -17,18 +46,37 @@ exports.addReviewBook = async(req,res)=>{
         });
         await newReview.save();
 
-        //Add the review to the books review array
         const book = await Book.findById(bookId);
         book.reviews.push(newReview._id);
         await book.save();
 
-        return res.status(201).json({message:'Review added successfully'});
-        console.log("review added");
-    }catch(error){
+        const friendships = await Friendship.find({
+            $or: [{ user: req.userId }, { friend: req.userId }],
+            status: "accepted"
+        }).populate("user friend");
+
+        const friendIds = friendships.map(f => {
+            return f.user._id.toString() === req.userId ? f.friend._id.toString() : f.user._id.toString();
+        }).filter(Boolean);
+
+        const updates = await Review.find({ user: { $in: friendIds.concat(req.userId) } })
+            .populate("user", "username")
+            .populate({
+                path: 'book',
+                select: 'title author' // Ensure 'author' is populated
+            });
+
+        res.status(201).json({
+            message: 'Review added successfully',
+            review: newReview,
+            updates
+        });
+    } catch (error) {
         console.error('Error adding review:', error);
-        return res.status(500).json({message:'Error adding review', error});
+        res.status(500).json({ message: 'Error adding review', error });
     }
 };
+
 
 //**GET** get all reviews
 exports.getReviewsForBook = async(req,res)=>{

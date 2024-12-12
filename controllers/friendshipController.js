@@ -507,39 +507,65 @@ exports.getEligibleUsers = async (req, res) => {
 
 
 // friendshipController.js
+// exports.getSocialUpdates = async (req, res) => {
+//     try {
+//         const userId = req.userId;
+//         console.log("User ID:", userId); // Logging
+
+//         const friendships = await Friendship.find({
+//             $or: [{ user: userId }, { friend: userId }],
+//             status: "accepted"
+//         }).populate("user friend");
+//         console.log("Friendships found:", friendships); // Logging
+
+//         // Safely handle undefined values in friendships array
+//         const friendIds = friendships.map(f => {
+//             if (!f.user || !f.friend) {
+//                 console.error("Undefined user or friend in friendship:", f);
+//                 return null;
+//             }
+//             return f.user._id.toString() === userId ? f.friend._id.toString() : f.user._id.toString();
+//         }).filter(Boolean);
+//         console.log("Friend IDs:", friendIds); // Logging
+
+//         const updates = await Review.find({ user: { $in: friendIds } })
+//             .populate("user", "username")
+//             .populate("book", "title");
+//         console.log("Updates found:", updates); // Logging
+
+//         res.status(200).json(updates);
+//     } catch (error) {
+//         console.error("Error fetching updates:", error); // Logging
+//         res.status(500).json({ message: "Error fetching updates", error: error.message });
+//     }
+// };
+
+
 exports.getSocialUpdates = async (req, res) => {
     try {
         const userId = req.userId;
-        console.log("User ID:", userId); // Logging
-
         const friendships = await Friendship.find({
             $or: [{ user: userId }, { friend: userId }],
             status: "accepted"
         }).populate("user friend");
-        console.log("Friendships found:", friendships); // Logging
 
-        // Safely handle undefined values in friendships array
         const friendIds = friendships.map(f => {
-            if (!f.user || !f.friend) {
-                console.error("Undefined user or friend in friendship:", f);
-                return null;
-            }
             return f.user._id.toString() === userId ? f.friend._id.toString() : f.user._id.toString();
         }).filter(Boolean);
-        console.log("Friend IDs:", friendIds); // Logging
 
-        const updates = await Review.find({ user: { $in: friendIds } })
+        const updates = await Review.find({ user: { $in: friendIds.concat(userId) } })
             .populate("user", "username")
-            .populate("book", "title");
-        console.log("Updates found:", updates); // Logging
+            .populate({
+                path: 'book',
+                select: 'title author' // Ensure 'author' is populated
+            });
 
         res.status(200).json(updates);
     } catch (error) {
-        console.error("Error fetching updates:", error); // Logging
-        res.status(500).json({ message: "Error fetching updates", error: error.message });
+        console.error('Error fetching updates:', error);
+        res.status(500).json({ message: 'Error fetching updates', error });
     }
 };
-
 
 
 
