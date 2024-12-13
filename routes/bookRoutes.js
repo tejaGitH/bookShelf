@@ -11,7 +11,8 @@ router.get('/best-sellers',bookController.getBestSellers);
 router.get('/book-details/:isbn',bookController.getBookDetails);
 router.get('/search/:query', bookController.searchBooks);
 
-router.get('/search/books/:query',bookController.searchUserAndFriendsBooks);
+ router.get('/search/books/:query',bookController.searchUserAndFriendsBooks);
+//router.get('/search/books/:query',bookController.searchUserBooks);
 router.get('/search/people/:query', bookController.searchPeople)
 
 //routes for database operations

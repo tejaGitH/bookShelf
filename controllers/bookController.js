@@ -35,6 +35,7 @@ const searchBooks =async(req,res)=>{
         //console.log(data);
         res.json(data);
     }catch(error){
+      console.error('Error searching books:', error);
         res.status(500).json({message:'Error searching books'});
     }
 }
@@ -54,22 +55,64 @@ const searchBooks =async(req,res)=>{
 const searchUserAndFriendsBooks = async (req, res) => {
   const query = req.params.query;
   try {
-      const userBooks = await Book.find({ $text: { $search: query }, userId: req.userId });
-      const friends = await User.find({ friendships: req.userId });
-      const friendsBooks = await Book.find({ userId: { $in: friends.map(friend => friend._id) }, $text: { $search: query } });
+      // Debugging userId
+      console.log("User ID:", req.userId);
 
-      console.log("searchBooks", userBooks, friends, friendsBooks);
+      // Create a case-insensitive regex for partial matches
+      const regex = new RegExp(query, 'i');
+
+      // Fetch user books
+      const userBooks = await Book.find({ 
+          $or: [
+              { title: regex },
+              { author: regex }
+          ],
+          userId: req.userId 
+      });
+      console.log("User Books:", userBooks);
+
+      // Fetch friends
+      const friends = await User.find({ friendships: req.userId });
+      console.log("Friends:", friends);
+
+      // Fetch friends' books
+      const friendsBooks = await Book.find({ 
+          userId: { $in: friends.map(friend => friend._id) },
+          $or: [
+              { title: regex },
+              { author: regex }
+          ]
+      });
+      console.log("Friends' Books:", friendsBooks);
+
       const data = {
           userBooks,
           friendsBooks
       };
-      console.log(data);
+
       res.json(data);
   } catch (error) {
       console.error("Error searching user and friends books:", error);
       res.status(500).json({ message: 'Error searching user and friends books', error: error.message });
   }
 };
+
+
+const searchUserBooks = async (req, res) => {
+  const query = req.params.query;
+  try {
+      const userBooks = await Book.find({ $text: { $search: query }, userId: req.userId });
+
+      console.log("User Books:", userBooks);
+
+      res.json(userBooks);
+  } catch (error) {
+      console.error("Error searching user books:", error);
+      res.status(500).json({ message: 'Error searching user books', error: error.message });
+  }
+};
+
+
 
 
 
@@ -375,6 +418,7 @@ module.exports={
     getBestSellers,
     getBookDetails,
     searchBooks,
+    searchUserBooks,
     addBook,
     getUserBooks,
     deleteBook,
