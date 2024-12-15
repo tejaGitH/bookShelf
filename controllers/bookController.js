@@ -248,8 +248,19 @@ const updateReadingProgress = async (req, res) => {
 const getCurrentlyReadingBooks = async (req, res) => {
     try {
         const userId = req.userId;
-        const books = await Book.find({ userId, currentlyReading: true });
-        res.status(200).json(books);
+        const books = await Book.find({ currentlyReading: true, userId });
+const progressData = await ReadingProgress.find({ user: userId, book: { $in: books.map(book => book._id) } });
+
+const booksWithProgress = books.map(book => {
+  const progress = progressData.find(progress => progress.book.equals(book._id));
+  return {
+    ...book.toObject(),
+    progress: progress?.progress || 0,
+    comments: progress?.comments || '',
+  };
+});
+
+res.json(booksWithProgress);
     } catch (error) {
         res.status(500).json({ message: "Error fetching currently reading books", error: error.message });
     }
