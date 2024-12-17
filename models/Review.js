@@ -24,6 +24,10 @@ const reviewSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   }],
+  dislikes: [{ // Added field
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }],
   comments: [{
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     comment: { type: String },

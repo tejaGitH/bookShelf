@@ -139,27 +139,49 @@ exports.deleteReview = async(req,res)=>{
 
 
 exports.likeReview = async (req, res) => {
-  try {
-    const { reviewId } = req.params;
-    const userId = req.userId;
-
-    const review = await Review.findById(reviewId);
-    if (!review) {
-      return res.status(404).json({ message: 'Review not found' });
+    try {
+      const { reviewId } = req.params;
+      const userId = req.userId;
+  
+      // Find the review
+      const review = await Review.findById(reviewId);
+      if (!review) {
+        return res.status(404).json({ message: 'Review not found' });
+      }
+  
+      // Handle "like" or "dislike" based on the query parameter
+      const action = req.query.action; // Can be "like" or "dislike"
+  
+      if (action === 'dislike') {
+        // If user already disliked, remove the dislike
+        if (review.dislikes.includes(userId)) {
+          review.dislikes = review.dislikes.filter((id) => id.toString() !== userId);
+        } else {
+          // If the user liked the review before, remove the like
+          review.likes = review.likes.filter((id) => id.toString() !== userId);
+          // Add the user to dislikes
+          review.dislikes.push(userId);
+        }
+      } else {
+        // Default action: Like the review
+        if (review.likes.includes(userId)) {
+          // If user already liked, remove the like
+          review.likes = review.likes.filter((id) => id.toString() !== userId);
+        } else {
+          // If the user disliked the review before, remove the dislike
+          review.dislikes = review.dislikes.filter((id) => id.toString() !== userId);
+          // Add the user to likes
+          review.likes.push(userId);
+        }
+      }
+  
+      // Save the review with the updated likes/dislikes
+      await review.save();
+      res.status(200).json(review);
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to like/dislike review', error: error.message });
     }
-
-    if (review.likes.includes(userId)) {
-      review.likes = review.likes.filter(id => id.toString() !== userId);
-    } else {
-      review.likes.push(userId);
-    }
-
-    await review.save();
-    res.status(200).json(review);
-  } catch (error) {
-    res.status(500).json({ message: 'Failed to like review', error: error.message });
-  }
-};
+  };
 
 exports.addComment = async (req, res) => {
   try {
