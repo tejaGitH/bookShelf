@@ -6,15 +6,29 @@ const Friendship = require('../models/Friendship');
 const mongoose = require('mongoose');
 
 
-const getBestSellers = async(req,res)=>{
-    const list= req.params.list;
-    try{
-        const data = await api.getBestSellers(list);
-        res.json(data);
-    }catch(error){
-        res.status(500).json({message:'error fetching best sellers',error:error.message});
+const getBestSellers = async (req, res) => {
+  const list = req.params.list;
+  const maxRetries = 3;
+  const retryDelay = 500; // 500ms
+
+  for (let i = 0; i <= maxRetries; i++) {
+    try {
+      const data = await api.getBestSellers(list);
+      res.json(data);
+      return;
+    } catch (error) {
+      if (error.response.status === 429) {
+        console.log(`Rate limit exceeded. Retrying in ${retryDelay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
+        retryDelay *= 2; // exponential backoff
+      } else {
+        throw error;
+      }
     }
-}
+  }
+
+  res.status(500).json({ message: 'Failed to retrieve best sellers' });
+};
 
 const getBookDetails = async(req,res)=>{
     const isbn = req.params.isbn;
