@@ -28,5 +28,7 @@ router.put('/mark-as-reading/:id', bookController.markBookAsCurrentlyReading);
 router.get('/finished', bookController.getFinishedBooks);
 router.get('/friends-books',bookController.getFriendsBooks);
 router.post('/friends-books/:bookId/add',bookController.addFriendBookToUser);
+router.put('/:bookId/favorite', bookController.markAsFavorite);
+router.get('/favorites', bookController.getFavoriteBooks);
 
 module.exports = router;

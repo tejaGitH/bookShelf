@@ -489,6 +489,46 @@ const addFriendBookToUser = async (req, res) => {
         return res.status(500).json({ message: 'Failed to add friend\'s book to user', error: error.message });
     }
 };
+const markAsFavorite = async (req, res) => {
+  try {
+      const { bookId } = req.params;
+      const userId = req.userId;
+
+      // Find the book and update the `isFavorite` field
+      const book = await Book.findOneAndUpdate(
+          { _id: bookId, userId: userId },
+          { $set: { isFavorite: true } },
+          { new: true }
+      );
+
+      if (!book) {
+          return res.status(404).json({ message: "Book not found or not owned by user" });
+      }
+
+      res.status(200).json({ message: "Book marked as favorite", book });
+  } catch (error) {
+      console.error("Error marking book as favorite:", error);
+      res.status(500).json({ message: "Error marking book as favorite", error: error.message });
+  }
+};
+
+const getFavoriteBooks = async (req, res) => {
+  try {
+      const userId = req.userId;
+
+      // Find all books marked as favorite for the user
+      const favoriteBooks = await Book.find({ userId: userId, isFavorite: true }).sort({ createdAt: -1 })
+         
+
+          console.log("favoriteBooks",favoriteBooks);
+
+      res.json(favoriteBooks);
+  } catch (error) {
+      console.error("Error fetching favorite books:", error);
+      res.status(500).json({ message: "Error fetching favorite books", error: error.message });
+  }
+};
+
 
 
 
@@ -514,5 +554,7 @@ module.exports={
     searchUserAndFriendsBooks,
     searchPeople,
     getFriendsBooks,
-    addFriendBookToUser
+    addFriendBookToUser,
+    markAsFavorite,
+    getFavoriteBooks    
 };

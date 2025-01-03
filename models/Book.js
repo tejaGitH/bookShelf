@@ -9,9 +9,11 @@ const bookSchema = new mongoose.Schema({
     currentlyReading: { type: Boolean, default: false },
     status: { type: String, enum: ['reading', 'finished', 'not reading'], default: 'not reading' },
     reviews: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Review' }],
-    isFriendBook: { type: Boolean, default: false }
+    isFriendBook: { type: Boolean, default: false },
+    isFavorite: { type: Boolean, default: false }
+    
 }, {timestamps: true});
-
+    
 // Create text index on title and author fields
 bookSchema.index({ title: 'text', author: 'text' });
 
