@@ -540,7 +540,6 @@ exports.getEligibleUsers = async (req, res) => {
 //     }
 // };
 
-
 exports.getSocialUpdates = async (req, res) => {
     try {
         const userId = req.userId;
@@ -556,17 +555,25 @@ exports.getSocialUpdates = async (req, res) => {
         const updates = await Review.find({ user: { $in: friendIds.concat(userId) } })
             .populate("user", "username")
             .populate({
-                path: 'book',
-                select: 'title author' // Ensure 'author' is populated
+                path: "book",
+                select: "title author"
+            })
+            .populate({
+                path: "comments.user",
+                select: "username" // Populate username for each comment's user
             });
+
+        // Sort comments by createdAt (most recent first)
+        updates.forEach(update => {
+            update.comments.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        });
 
         res.status(200).json(updates);
     } catch (error) {
-        console.error('Error fetching updates:', error);
-        res.status(500).json({ message: 'Error fetching updates', error });
+        console.error("Error fetching updates:", error);
+        res.status(500).json({ message: "Error fetching updates", error });
     }
 };
-
 
 
 // exports.getCombinedFriendUpdates = async (req, res) => {

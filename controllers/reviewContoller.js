@@ -182,27 +182,38 @@ exports.likeReview = async (req, res) => {
       res.status(500).json({ message: 'Failed to like/dislike review', error: error.message });
     }
   };
+  exports.addComment = async (req, res) => {
+    try {
+        const { reviewId } = req.params;
+        const userId = req.userId;
+        const { comment } = req.body;
 
-exports.addComment = async (req, res) => {
-  try {
-    const { reviewId } = req.params;
-    const userId = req.userId;
-    const { comment } = req.body;
+        const review = await Review.findById(reviewId);
+        if (!review) {
+            return res.status(404).json({ message: 'Review not found' });
+        }
 
-    const review = await Review.findById(reviewId);
-    if (!review) {
-      return res.status(404).json({ message: 'Review not found' });
+        const newComment = { user: userId, comment };
+        review.comments.push(newComment);
+        await review.save();
+
+        // Populate the user field in the newly added comment
+        const populatedComment = await Review.findById(reviewId)
+            .select("comments")
+            .populate({
+                path: "comments.user",
+                select: "username",
+                match: { _id: userId }, // Only populate the current user for the new comment
+            });
+
+        const latestComment = populatedComment.comments.pop();
+
+        res.status(201).json({ reviewId, comment: latestComment });
+    } catch (error) {
+        console.error("Error adding comment:", error);
+        res.status(500).json({ message: "Failed to add comment", error: error.message });
     }
-
-    review.comments.push({ user: userId, comment });
-    await review.save();
-    
-    res.status(201).json(review);
-  } catch (error) {
-    res.status(500).json({ message: 'Failed to add comment', error: error.message });
-  }
 };
-
 
 
 
